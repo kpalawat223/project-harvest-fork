@@ -740,7 +740,63 @@ iw.hds <- iw.hds %>%
 ####
 ####----
 #Summaries ----
-contam_list <- list("Al", "Sb", "As", "Ba", "Be", "Cd", "Cr", "Co", "Cu", "Fe", "Pb", "Mn", "Mo", "Ni", "Se", "Ag", "Sn", "V", "Zn")
+##For PLI paper ----
+iw.dm.long.sum <- iw.dm.long %>%
+  filter(analyte == "As" | analyte == "Pb" |analyte == "Cd" |analyte == "Mn" |analyte == "Al" |analyte == "Cr" |analyte == "Cu" |analyte == "Zn" |analyte == "Ni" |analyte == "Ba" |analyte == "Be")
+
+sumFX(datalongDF = iw.dm.long.sum,
+      subset.vector.string = c("analyte"),
+      value.string = "value",
+      dfname.string = "sum.iw",
+      filename.string = "sum_iw")
+
+sumFX(datalongDF = iw.dm.long.sum,
+      subset.vector.string = c("analyte","community"),
+      value.string = "value",
+      dfname.string = "sum.iw.com",
+      filename.string = "sum_iw_com")
+
+sumFX(datalongDF = iw.dm.long.sum,
+      subset.vector.string = c("analyte", "season"),
+      value.string = "value",
+      dfname.string = "sum.iw.ssn",
+      filename.string = "sum_iw_ssn")
+
+sumFX(datalongDF = iw.dm.long.sum,
+      subset.vector.string = c("analyte","community", "season"),
+      value.string = "value",
+      dfname.string = "sum.iw.comssn",
+      filename.string = "sum_iw_comssn")
+
+###skywater ----
+ic.dm.long.sum <- ic.dm.long %>%
+  filter(analyte == "As" | analyte == "Pb" |analyte == "Cd" |analyte == "Mn" |analyte == "Al" |analyte == "Cr" |analyte == "Cu" |analyte == "Zn" |analyte == "Ni" |analyte == "Ba" |analyte == "Be")
+
+sumFX(datalongDF = ic.dm.long.sum,
+      subset.vector.string = c("analyte"),
+      value.string = "value",
+      dfname.string = "sum.iw",
+      filename.string = "sum_iw")
+
+sumFX(datalongDF = ic.dm.long.sum,
+      subset.vector.string = c("analyte","community"),
+      value.string = "value",
+      dfname.string = "sum.iw.com",
+      filename.string = "sum_iw_com")
+
+sumFX(datalongDF = ic.dm.long.sum,
+      subset.vector.string = c("analyte", "season"),
+      value.string = "value",
+      dfname.string = "sum.iw.ssn",
+      filename.string = "sum_iw_ssn")
+
+sumFX(datalongDF = ic.dm.long.sum,
+      subset.vector.string = c("analyte","community", "season"),
+      value.string = "value",
+      dfname.string = "sum.iw.comssn",
+      filename.string = "sum_iw_comssn")
+
+#contam_list <- list("Al", "Sb", "As", "Ba", "Be", "Cd", "Cr", "Co", "Cu", "Fe", "Pb", "Mn", "Mo", "Ni", "Se", "Ag", "Sn", "V", "Zn")
 
 
 #distributions
@@ -792,6 +848,66 @@ lapply(X=contam_list,
        units.string = "(ln(mg/kg))")
 
 #Functions ----
+sumFX <- function(datalongDF, subset.vector.string, value.string, dfname.string, filename.string){
+  
+  #load libraries
+  library(tidyverse)
+  library(EnvStats)
+  
+  #assign data
+  dat.long <- datalongDF
+  cols <- subset.vector.string
+  value <- value.string
+  dfname <- dfname.string
+  filename <- filename.string
+  
+  #calculate summary stats
+  sumtable <- dat.long %>%
+    group_by(across(all_of(cols))) %>%
+    summarize(n = n(),
+              min = min(.data[[value]]),
+              max = max(.data[[value]]),
+              median = median(.data[[value]]),
+              mean = mean(.data[[value]]),
+              sd = sd(.data[[value]])
+              ,
+              gmean = geoMean(.data[[value]]),
+              gsd = geoSD(.data[[value]])
+    )
+  
+  #make longer
+  sum.long <- pivot_longer(data = sumtable,
+                           cols = n:gsd,
+                           values_to = "value",
+                           names_to = "stat",
+                           values_drop_na = T)
+  
+  #sig figs
+  sum.long$value <- signif(as.numeric(sum.long$value),digits=3)
+  
+  #sum.long$value <- as.numeric(sum.long$value)
+  
+  #widen
+  sum.wide <- pivot_wider(data = sum.long,
+                          names_from = stat, #change out as needed
+                          values_from = value)
+  
+  #sig figs messes up count for some reason, add from original
+  sum.wide$n <- sumtable$n
+  
+  sum.wide$sumcol <- paste(sum.wide$n, ": ",sum.wide$mean, " (", sum.wide$sd, "); ", sum.wide$median, " [", sum.wide$min, " - ", sum.wide$max, "]; ", sum.wide$gmean, " (",sum.wide$gsd, ")", sep = "")
+  
+  #save as csv file in your working directory
+  write.csv(sum.wide, paste(filename,"_sum.csv", sep = ""))
+  
+  #copy to new dataframe with a unique name and place in global environment
+  assign(paste(dfname), sum.wide, envir=.GlobalEnv)
+  
+  # #return the dataframe by character string
+  # return(get(dfname))
+  
+}
+
 violintransFX <- function(dataDF, analyte.string, subset.string, subset.title.string, facet.string, facet.title.string, units.string, type.string){
 
   #load libraries
@@ -934,6 +1050,7 @@ violinfacFX <- function(dataDF, analyte.string, subset.string, subset.title.stri
   dev.print(png, paste(type,"_", analyte, "_vplot_", subset, "_", fac, ".png", sep=""), res=300, height=7, width=10, units="in")
 
 }
+
 
 
 
